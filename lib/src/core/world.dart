@@ -106,8 +106,7 @@ class World {
   }
 
   /// Adds a [component] to the [entity].
-  void addComponent<T extends Component>(int entity, T component) =>
-      componentManager._addComponent(
+  void addComponent<T extends Component>(int entity, T component) => componentManager._addComponent(
         entity,
         ComponentType.getTypeFor(component.runtimeType),
         component,
@@ -121,14 +120,12 @@ class World {
   }
 
   /// Removes a [Component] of type [T] from the [entity].
-  void removeComponent<T extends Component>(int entity) =>
-      componentManager._removeComponent(entity, ComponentType.getTypeFor(T));
+  void removeComponent<T extends Component>(int entity) => componentManager._removeComponent(entity, ComponentType.getTypeFor(T));
 
   /// Moves a [Component] of type [T] from the [srcEntity] to the [dstEntity].
   /// if the [srcEntity] does not have the [Component] of type [T] nothing will
   /// happen.
-  void moveComponent<T extends Component>(int srcEntity, int dstEntity) =>
-      componentManager._moveComponent(
+  void moveComponent<T extends Component>(int srcEntity, int dstEntity) => componentManager._moveComponent(
         srcEntity,
         dstEntity,
         ComponentType.getTypeFor(T),
@@ -187,8 +184,7 @@ class World {
     _frame[group] = _frame[group]! + 1;
     _time[group] = _time[group]! + delta;
 
-    for (final system in _systemsList
-        .where((system) => !system.passive && system.group == group)) {
+    for (final system in _systemsList.where((system) => !system.passive && system.group == group)) {
       _updateSystem(system);
       system.process();
 
@@ -230,9 +226,7 @@ class World {
   /// because they will be added to a free list and might be overwritten once a
   /// new [Component] of that type is created.
   void deleteAllEntities() {
-    entityManager._entities
-        .toIntValues()
-        .forEach(_entitiesMarkedForDeletion.add);
+    entityManager._entities.toIntValues().forEach(_entitiesMarkedForDeletion.add);
     _deleteEntities();
   }
 
@@ -271,39 +265,7 @@ class World {
   /// Get all components belonging to this entity.
   List<Component> getComponents(int entity) => _componentManager.getComponentsFor(entity);
 
-  /// Returns every entity that is of interest for [aspect].
-  List<int> getEntitiesForAspect(Aspect aspect) {
-    final entitiesBitSetLength = _entityManager._entities.length;
-
-    final componentIndicesAll = aspect.all.toIntValues();
-    final componentIndicesOne = aspect.one.toIntValues();
-    final componentIndicesExcluded = aspect.excluded.toIntValues();
-
-    final componentInfoByType = _componentManager._componentInfoByType;
-
-    final baseAll = BitSet(entitiesBitSetLength)..setAll();
-    for (final interestingComponent in componentIndicesAll) {
-      baseAll.and(componentInfoByType[interestingComponent]!.entities);
-    }
-    final baseOne = BitSet(entitiesBitSetLength);
-    if (componentIndicesOne.isEmpty) {
-      baseOne.setAll();
-    } else {
-      for (final interestingComponent in componentIndicesOne) {
-        baseOne.or(componentInfoByType[interestingComponent]!.entities);
-      }
-    }
-    final baseExclude = BitSet(entitiesBitSetLength);
-    for (final interestingComponent in componentIndicesExcluded) {
-      baseExclude.or(componentInfoByType[interestingComponent]!.entities);
-    }
-    baseAll
-      ..and(baseOne)
-      ..andNot(baseExclude);
-    return baseAll.toIntValues();
-  }
-
-  /// Filters entity with [aspect].
+  /// Filters entity conforming to [aspect].
   Iterable<T> filterWithAspect<T>(Iterable<T> iterable, Aspect aspect, int Function(T) objectToEntity) {
     final entitiesBitSetLength = _entityManager._entities.length;
 
@@ -311,23 +273,29 @@ class World {
     final componentIndicesOne = aspect.one.toIntValues();
     final componentIndicesExcluded = aspect.excluded.toIntValues();
 
-    final componentInfoByType = _componentManager._componentInfoByType;
+    final infoByType = _componentManager._componentInfoByType;
 
     final baseAll = BitSet(entitiesBitSetLength)..setAll();
-    for (final interestingComponent in componentIndicesAll) {
-      baseAll.and(componentInfoByType[interestingComponent]!.entities);
+    for (final component in componentIndicesAll) {
+      if (component >= infoByType.length || infoByType[component] == null) {
+        // At least one required component is not present yet in the world
+        return [];
+      }
+      baseAll.and(infoByType[component]!.entities);
     }
     final baseOne = BitSet(entitiesBitSetLength);
     if (componentIndicesOne.isEmpty) {
       baseOne.setAll();
     } else {
-      for (final interestingComponent in componentIndicesOne) {
-        baseOne.or(componentInfoByType[interestingComponent]!.entities);
+      for (final component in componentIndicesOne) {
+        if (component >= infoByType.length || infoByType[component] == null) continue;
+        baseOne.or(infoByType[component]!.entities);
       }
     }
     final baseExclude = BitSet(entitiesBitSetLength);
-    for (final interestingComponent in componentIndicesExcluded) {
-      baseExclude.or(componentInfoByType[interestingComponent]!.entities);
+    for (final component in componentIndicesExcluded) {
+      if (component >= infoByType.length || infoByType[component] == null) continue;
+      baseExclude.or(infoByType[component]!.entities);
     }
 
     final entityBitSet = baseAll
