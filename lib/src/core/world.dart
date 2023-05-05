@@ -269,8 +269,72 @@ class World {
   }
 
   /// Get all components belonging to this entity.
-  List<Component> getComponents(int entity) =>
-      _componentManager.getComponentsFor(entity);
+  List<Component> getComponents(int entity) => _componentManager.getComponentsFor(entity);
+
+  /// Returns every entity that is of interest for [aspect].
+  List<int> getEntitiesForAspect(Aspect aspect) {
+    final entitiesBitSetLength = _entityManager._entities.length;
+
+    final componentIndicesAll = aspect.all.toIntValues();
+    final componentIndicesOne = aspect.one.toIntValues();
+    final componentIndicesExcluded = aspect.excluded.toIntValues();
+
+    final componentInfoByType = _componentManager._componentInfoByType;
+
+    final baseAll = BitSet(entitiesBitSetLength)..setAll();
+    for (final interestingComponent in componentIndicesAll) {
+      baseAll.and(componentInfoByType[interestingComponent]!.entities);
+    }
+    final baseOne = BitSet(entitiesBitSetLength);
+    if (componentIndicesOne.isEmpty) {
+      baseOne.setAll();
+    } else {
+      for (final interestingComponent in componentIndicesOne) {
+        baseOne.or(componentInfoByType[interestingComponent]!.entities);
+      }
+    }
+    final baseExclude = BitSet(entitiesBitSetLength);
+    for (final interestingComponent in componentIndicesExcluded) {
+      baseExclude.or(componentInfoByType[interestingComponent]!.entities);
+    }
+    baseAll
+      ..and(baseOne)
+      ..andNot(baseExclude);
+    return baseAll.toIntValues();
+  }
+
+  /// Filters entity with [aspect].
+  Iterable<T> filterWithAspect<T>(Iterable<T> iterable, Aspect aspect, int Function(T) objectToEntity) {
+    final entitiesBitSetLength = _entityManager._entities.length;
+
+    final componentIndicesAll = aspect.all.toIntValues();
+    final componentIndicesOne = aspect.one.toIntValues();
+    final componentIndicesExcluded = aspect.excluded.toIntValues();
+
+    final componentInfoByType = _componentManager._componentInfoByType;
+
+    final baseAll = BitSet(entitiesBitSetLength)..setAll();
+    for (final interestingComponent in componentIndicesAll) {
+      baseAll.and(componentInfoByType[interestingComponent]!.entities);
+    }
+    final baseOne = BitSet(entitiesBitSetLength);
+    if (componentIndicesOne.isEmpty) {
+      baseOne.setAll();
+    } else {
+      for (final interestingComponent in componentIndicesOne) {
+        baseOne.or(componentInfoByType[interestingComponent]!.entities);
+      }
+    }
+    final baseExclude = BitSet(entitiesBitSetLength);
+    for (final interestingComponent in componentIndicesExcluded) {
+      baseExclude.or(componentInfoByType[interestingComponent]!.entities);
+    }
+
+    final entityBitSet = baseAll
+      ..and(baseOne)
+      ..andNot(baseExclude);
+    return iterable.where((object) => entityBitSet[objectToEntity(object)]);
+  }
 }
 
 /// A [World] which measures performance by measureing elapsed time between
