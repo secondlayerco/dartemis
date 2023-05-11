@@ -301,7 +301,10 @@ class World {
     final entityBitSet = baseAll
       ..and(baseOne)
       ..andNot(baseExclude);
-    return iterable.where((object) => entityBitSet[objectToEntity(object)]);
+    return iterable.where((object) {
+      final index = objectToEntity(object);
+      return index >= 0 && index < entityBitSet.length && entityBitSet[index];
+    });
   }
 }
 
